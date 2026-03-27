@@ -27,7 +27,7 @@ const classifyTool: Anthropic.Tool = {
 		properties: {
 			action: {
 				type: "string",
-				enum: ["play", "pet", "sleep", "talk"],
+				enum: ["feed", "play", "pet", "sleep", "talk"],
 				description: "ユーザーの行動の種類",
 			},
 		},
@@ -42,6 +42,7 @@ export async function classifyAction(
 		model: config.ANTHROPIC_MODEL,
 		max_tokens: 64,
 		system: `ユーザーのメッセージを分類してください。
+- feed: ごはん・食べ物をあげている、食事に関する行動
 - play: 遊びに誘っている（しりとり、クイズ、じゃんけん等）
 - pet: 褒めている、なでている、愛情表現をしている
 - sleep: 寝かしつけている（おやすみ、もう寝な等）

@@ -78,6 +78,9 @@ export async function handleMessage(
 		action = await classifyAction(input.message);
 
 		switch (action) {
+			case "feed":
+				delta = { hunger: 20, mood: 10 };
+				break;
 			case "pet":
 				delta = { mood: 5 };
 				break;

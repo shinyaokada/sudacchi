@@ -77,21 +77,27 @@ export function detectFood(message: string): FoodInfo | null {
 	const trimmed = message.trim();
 	if (!trimmed) return null;
 
-	// Split into grapheme clusters
-	const segments = [...segmenter.segment(trimmed)].map((s) => s.segment);
-
-	// Check if all segments are the same food emoji
-	const unique = new Set(segments);
-	if (unique.size !== 1) return null;
-
-	const emoji = segments[0];
-
 	// Check for sudachi custom emoji
-	if (emoji === ":sudachi:" || trimmed === ":sudachi:") {
+	if (trimmed.includes(":sudachi:")) {
 		return { emoji: ":sudachi:", category: "sudachi", hunger: 25, mood: 30 };
 	}
 
-	return FOOD_EMOJI_MAP.get(emoji) ?? null;
+	// Split into grapheme clusters
+	const segments = [...segmenter.segment(trimmed)].map((s) => s.segment);
+
+	// Check if all segments are the same food emoji (pure emoji message)
+	const unique = new Set(segments);
+	if (unique.size === 1 && FOOD_EMOJI_MAP.has(segments[0])) {
+		return FOOD_EMOJI_MAP.get(segments[0])!;
+	}
+
+	// Check if message contains any food emoji (mixed text+emoji)
+	for (const seg of segments) {
+		const food = FOOD_EMOJI_MAP.get(seg);
+		if (food) return food;
+	}
+
+	return null;
 }
 
 export function getFoodDelta(food: FoodInfo): StatusDelta {
