@@ -30,10 +30,10 @@ app.message(async ({ message, say }) => {
 	// Only respond in the designated channel
 	if (msg.channel !== config.SUDACCHI_CHANNEL_ID) return;
 
-	// Ignore messages that mention the bot (avoid double responses)
-	if (botUserId && msg.text?.includes(`<@${botUserId}>`)) {
-		// Still respond, just strip the mention
-	}
+	// Ignore messages that mention other users (not the bot)
+	const mentions = msg.text?.match(/<@(U[A-Z0-9]+)>/g) ?? [];
+	const hasOtherMention = mentions.some((m) => m !== `<@${botUserId}>`);
+	if (hasOtherMention) return;
 
 	const sudacchi = getAliveSudacchi(db);
 	if (!sudacchi) {
