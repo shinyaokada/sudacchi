@@ -1,5 +1,5 @@
 export type Stage = "egg" | "baby" | "child" | "adult" | "veteran";
-export type ActionType = "feed" | "play" | "pet" | "sleep" | "talk" | "event";
+export type ActionType = "feed" | "play" | "pet" | "sleep" | "wake" | "talk" | "event";
 
 export interface SudacchiState {
 	id: string;

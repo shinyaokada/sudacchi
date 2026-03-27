@@ -39,7 +39,7 @@ export const interactionLogs = sqliteTable("interaction_logs", {
 		.notNull()
 		.references(() => sudacchi.id),
 	userId: text("user_id"),
-	type: text("type", { enum: ["feed", "play", "pet", "sleep", "talk", "event"] }).notNull(),
+	type: text("type", { enum: ["feed", "play", "pet", "sleep", "wake", "talk", "event"] }).notNull(),
 	detail: text("detail"),
 	createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
 });

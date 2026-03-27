@@ -54,13 +54,57 @@ export async function handleMessage(
 		};
 	}
 
-	// Sleeping check
+	// Sleeping check — only wake action can interrupt sleep
 	if (state.isSleeping) {
-		return {
-			response: "zzZ...zzZ...（スダッチは寝ています）",
-			statusBar: formatStatusBar(state),
-			action: "talk",
+		const action = await classifyAction(input.message);
+		if (action !== "wake") {
+			return {
+				response: "💤 スダッチは寝ています…zzZ",
+				statusBar: formatStatusBar(state),
+				action: "talk",
+			};
+		}
+
+		// 強制起床: mood -15, bond -2
+		state = {
+			...state,
+			isSleeping: false,
+			mood: Math.max(0, state.mood - 15),
 		};
+
+		const bond = getOrCreateBond(db, input.userId, input.sudacchiId);
+		const systemPrompt = buildSystemPrompt(state, bond);
+		const wakeContext = "[システム] ユーザーに叩き起こされました。寝起きで不機嫌に反応してください。";
+		const response = await generateResponse(systemPrompt, [
+			{ role: "user", content: `${wakeContext}\n\nユーザーのメッセージ: ${input.message}` },
+		]);
+		const statusBar = formatStatusBar(state, { mood: -15 });
+
+		updateSudacchi(db, input.sudacchiId, {
+			hunger: state.hunger,
+			mood: state.mood,
+			energy: state.energy,
+			isSleeping: false,
+			lastInteractionAt: now,
+			hungerZeroSince: state.hungerZeroSince,
+			moodZeroSince: state.moodZeroSince,
+			allLowSince: state.allLowSince,
+		});
+
+		updateBond(db, input.userId, input.sudacchiId, {
+			bond: Math.max(0, bond.bond - 2),
+			lastInteractionAt: now,
+		});
+
+		createLog(db, {
+			sudacchiId: input.sudacchiId,
+			userId: input.userId,
+			type: "wake",
+			detail: JSON.stringify({ userMessage: input.message, response }),
+			createdAt: now,
+		});
+
+		return { response, statusBar, action: "wake" };
 	}
 
 	// Detect food emoji

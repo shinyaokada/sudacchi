@@ -4,7 +4,7 @@ import { config } from "../config.js";
 import { handleMessage } from "../core/handler.js";
 import { db } from "../db/client.js";
 import { runMigrations } from "../db/migrate.js";
-import { getAliveSudacchi } from "../db/repository/sudacchi.js";
+import { getAliveSudacchi, updateSudacchi } from "../db/repository/sudacchi.js";
 import { formatStatusBar } from "../engine/status.js";
 import { executeDeathCheck } from "../scheduler/death-check.js";
 import { executeTick } from "../scheduler/tick.js";
@@ -71,10 +71,13 @@ async function postAutonomous(text: string) {
 	}
 }
 
-// Status decay every 10 minutes
+// Status decay every 10 minutes (also handles sleep recovery + auto-wake)
 cron.schedule("*/10 * * * *", () => {
 	const result = executeTick(db, 10);
 	if (result) {
+		if (result.wokeUp) {
+			postAutonomous("ふわぁ〜、よく寝たー！⚡✨");
+		}
 		const death = executeDeathCheck(db);
 		if (death.isDead) {
 			postAutonomous(`💀 ${death.reason}\nスダッチは旅立ってしまいました...`);
@@ -134,25 +137,31 @@ cron.schedule("*/30 * * * *", async () => {
 	}
 });
 
-// Time-based greetings
+// 9:00 — 起床
 cron.schedule("0 9 * * *", () => {
 	const sudacchi = getAliveSudacchi(db);
 	if (sudacchi && !sudacchi.diedAt) {
-		postAutonomous("おはよー！今日もよろしくね！☀️");
+		if (sudacchi.isSleeping) {
+			updateSudacchi(db, sudacchi.id, { isSleeping: false, energy: 100 });
+		}
+		postAutonomous("おはよ〜！今日もよろしくね！☀️");
 	}
 });
 
+// 12:00 — 昼の挨拶
 cron.schedule("0 12 * * *", () => {
 	const sudacchi = getAliveSudacchi(db);
-	if (sudacchi && !sudacchi.diedAt) {
+	if (sudacchi && !sudacchi.diedAt && !sudacchi.isSleeping) {
 		postAutonomous("おひるだよ！おなかぺこぺこ！🍱");
 	}
 });
 
+// 23:00 — 就寝
 cron.schedule("0 23 * * *", () => {
 	const sudacchi = getAliveSudacchi(db);
-	if (sudacchi && !sudacchi.diedAt) {
-		postAutonomous("ふわぁ...おやすみなさい💤");
+	if (sudacchi && !sudacchi.diedAt && !sudacchi.isSleeping) {
+		updateSudacchi(db, sudacchi.id, { isSleeping: true, lastSleptAt: new Date() });
+		postAutonomous("ふわぁ…おやすみなさい💤");
 	}
 });
 
