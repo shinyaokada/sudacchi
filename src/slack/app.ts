@@ -174,18 +174,12 @@ export async function startSlack() {
 
 	console.log("⚡ Sudacchi is running in Slack mode!");
 
-	// Create initial sudacchi if none exists
+	// Create initial sudacchi if none exists (silently on startup)
 	const sudacchi = getAliveSudacchi(db);
 	if (!sudacchi) {
 		const { randomUUID } = await import("node:crypto");
 		const { createSudacchi } = await import("../db/repository/sudacchi.js");
 		createSudacchi(db, randomUUID(), new Date());
-		console.log("🥚 New Sudacchi created!");
-		if (config.SUDACCHI_CHANNEL_ID) {
-			await app.client.chat.postMessage({
-				channel: config.SUDACCHI_CHANNEL_ID,
-				text: "🥚 スダッチが生まれました！",
-			});
-		}
+		console.log("🥚 New Sudacchi created (startup)");
 	}
 }
