@@ -1,4 +1,4 @@
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 export const sudacchi = sqliteTable("sudacchi", {
 	id: text("id").primaryKey(),
@@ -6,9 +6,9 @@ export const sudacchi = sqliteTable("sudacchi", {
 	stage: text("stage", { enum: ["egg", "baby", "child", "adult", "veteran"] })
 		.notNull()
 		.default("egg"),
-	hunger: integer("hunger").notNull().default(50),
-	mood: integer("mood").notNull().default(50),
-	energy: integer("energy").notNull().default(50),
+	hunger: real("hunger").notNull().default(50),
+	mood: real("mood").notNull().default(50),
+	energy: real("energy").notNull().default(50),
 	isSleeping: integer("is_sleeping", { mode: "boolean" }).notNull().default(false),
 	bornAt: integer("born_at", { mode: "timestamp" }).notNull(),
 	diedAt: integer("died_at", { mode: "timestamp" }),

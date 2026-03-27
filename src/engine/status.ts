@@ -22,9 +22,9 @@ export function tickStatus(state: SudacchiState, elapsedMinutes: number, now: Da
 	const moodDecay = (3 / 60) * elapsedMinutes;
 	const energyDecay = (2 / 60) * elapsedMinutes;
 
-	const newHunger = clamp(Math.round(state.hunger - hungerDecay), 0, 100);
-	const newMood = clamp(Math.round(state.mood - moodDecay), 0, 100);
-	const newEnergy = clamp(Math.round(state.energy - energyDecay), 0, 100);
+	const newHunger = clamp(state.hunger - hungerDecay, 0, 100);
+	const newMood = clamp(state.mood - moodDecay, 0, 100);
+	const newEnergy = clamp(state.energy - energyDecay, 0, 100);
 
 	let hungerZeroSince = state.hungerZeroSince;
 	if (newHunger === 0 && !hungerZeroSince) hungerZeroSince = now;
@@ -56,7 +56,8 @@ export function formatStatusBar(
 	delta?: StatusDelta,
 ): string {
 	const bar = (value: number) => {
-		const filled = Math.round(value / 10);
+		const rounded = Math.round(value);
+		const filled = Math.round(rounded / 10);
 		const empty = 10 - filled;
 		return "█".repeat(filled) + "░".repeat(empty);
 	};
@@ -67,7 +68,7 @@ export function formatStatusBar(
 		return d > 0 ? `  (+${d})` : `  (${d})`;
 	};
 
-	const pad = (n: number) => String(n).padStart(3, " ");
+	const pad = (n: number) => String(Math.round(n)).padStart(3, " ");
 
 	if (state.isSleeping) {
 		return [
