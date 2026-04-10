@@ -6,7 +6,13 @@ import { createSudacchi, getAliveSudacchi } from "./db/repository/sudacchi.js";
 import { handleMessage } from "./core/handler.js";
 import { executeTick } from "./scheduler/tick.js";
 import { executeDeathCheck } from "./scheduler/death-check.js";
-import { formatStatusBar } from "./engine/status.js";
+import { applyStatusChange, formatStatusBar } from "./engine/status.js";
+import { classifyReaction, getReactionDelta, shortcodeToEmoji } from "./engine/reaction.js";
+import { getOrCreateBond, updateBond } from "./db/repository/bond.js";
+import { createLog } from "./db/repository/log.js";
+import { updateSudacchi } from "./db/repository/sudacchi.js";
+import { buildFeedContext, buildSystemPrompt } from "./ai/prompt.js";
+import { generateResponse } from "./ai/client.js";
 
 const CLI_USER_ID = "cli-user";
 const TICK_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
@@ -134,6 +140,115 @@ async function main() {
 			createSudacchi(db, id, now);
 			sudacchi = getAliveSudacchi(db)!;
 			console.log("\n🥚 新しいスダッチが生まれました！\n");
+			prompt();
+			return;
+		}
+
+		// Reaction command: <r>:shortcode:
+		const reactionMatch = trimmed.match(/^<r>:(.+):$/);
+		if (reactionMatch) {
+			if (!sudacchi || sudacchi.diedAt) {
+				sudacchi = getAliveSudacchi(db)!;
+				if (!sudacchi) {
+					console.log("スダッチはいません。/reset で孵化させましょう。\n");
+					prompt();
+					return;
+				}
+			}
+
+			if (sudacchi.isSleeping) {
+				console.log("💤 スダッチは寝ています…zzZ\n");
+				prompt();
+				return;
+			}
+
+			const shortcode = reactionMatch[1];
+			const category = classifyReaction(shortcode);
+			const reactionResult = getReactionDelta(category, shortcode);
+
+			let state = {
+				id: sudacchi.id, name: sudacchi.name, stage: sudacchi.stage,
+				hunger: sudacchi.hunger, mood: sudacchi.mood, energy: sudacchi.energy,
+				isSleeping: sudacchi.isSleeping, bornAt: sudacchi.bornAt, diedAt: sudacchi.diedAt,
+				lastFedAt: sudacchi.lastFedAt, lastPlayedAt: sudacchi.lastPlayedAt,
+				lastSleptAt: sudacchi.lastSleptAt, lastInteractionAt: sudacchi.lastInteractionAt,
+				hungerZeroSince: sudacchi.hungerZeroSince, moodZeroSince: sudacchi.moodZeroSince,
+				allLowSince: sudacchi.allLowSince,
+			};
+
+			if (reactionResult.delta.hunger || reactionResult.delta.mood || reactionResult.delta.energy) {
+				state = applyStatusChange(state, reactionResult.delta);
+			}
+
+			if (state.hunger > 0) state = { ...state, hungerZeroSince: null };
+			if (state.mood > 0) state = { ...state, moodZeroSince: null };
+			const allOk = state.hunger > 20 || state.mood > 20 || state.energy > 20;
+			if (allOk) state = { ...state, allLowSince: null };
+
+			const bond = getOrCreateBond(db, CLI_USER_ID, sudacchi.id);
+			const systemPrompt = buildSystemPrompt(state, bond);
+
+			const emoji = shortcodeToEmoji(shortcode) ?? `:${shortcode}:`;
+			let userContent: string;
+			if (reactionResult.actionType === "feed") {
+				userContent = shortcode === "sudachi"
+					? buildFeedContext(":sudachi:", "sudachi")
+					: `[システム] ユーザーがリアクションで ${emoji} をくれました。食べ物の感想を言ってください。`;
+			} else if (reactionResult.actionType === "pet") {
+				userContent = `[システム] ユーザーがリアクションで ${emoji} を付けました。なでてもらったように喜んでください。`;
+			} else if (reactionResult.actionType === "play") {
+				userContent = `[システム] ユーザーがリアクションで ${emoji} を付けました。遊びに誘われたように反応してください。`;
+			} else if (reactionResult.actionType === "event") {
+				userContent = `[システム] ユーザーがリアクションで ${emoji} を付けました。お出かけやイベントに関する反応をしてください。`;
+			} else {
+				userContent = `[システム] ユーザーがリアクションで ${emoji} を付けました。自由に反応してください。`;
+			}
+
+			try {
+				const response = await generateResponse(systemPrompt, [
+					{ role: "user", content: userContent },
+				]);
+				const statusBar = formatStatusBar(state, reactionResult.delta);
+
+				console.log(`[リアクション: ${emoji}] (${category})`);
+				console.log(`スダッチ: ${response}`);
+				if (statusBar) {
+					console.log(statusBar.split("\n").map((l) => `        ${l}`).join("\n"));
+				}
+				console.log();
+
+				const nowDate = new Date();
+				updateSudacchi(db, sudacchi.id, {
+					hunger: state.hunger, mood: state.mood, energy: state.energy,
+					isSleeping: state.isSleeping, lastInteractionAt: nowDate,
+					...(reactionResult.actionType === "feed" ? { lastFedAt: nowDate } : {}),
+					...(reactionResult.actionType === "play" ? { lastPlayedAt: nowDate } : {}),
+					hungerZeroSince: state.hungerZeroSince,
+					moodZeroSince: state.moodZeroSince,
+					allLowSince: state.allLowSince,
+				});
+
+				updateBond(db, CLI_USER_ID, sudacchi.id, {
+					bond: Math.min(100, bond.bond + (reactionResult.actionType === "talk" ? 1 : 2)),
+					lastInteractionAt: nowDate,
+					...(reactionResult.actionType === "feed" ? { totalFeeds: bond.totalFeeds + 1 } : {}),
+					...(reactionResult.actionType === "play" ? { totalPlays: bond.totalPlays + 1 } : {}),
+					...(reactionResult.actionType === "pet" ? { totalPets: bond.totalPets + 1 } : {}),
+				});
+
+				createLog(db, {
+					sudacchiId: sudacchi.id, userId: CLI_USER_ID,
+					type: reactionResult.actionType,
+					detail: JSON.stringify({ reaction: shortcode, emoji, response }),
+					createdAt: nowDate,
+				});
+
+				sudacchi = getAliveSudacchi(db)!;
+			} catch (err) {
+				console.error("エラーが発生しました:", (err as Error).message);
+				console.log();
+			}
+
 			prompt();
 			return;
 		}
