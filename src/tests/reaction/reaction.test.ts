@@ -11,20 +11,20 @@ import {
 describe("classifyReaction", () => {
 	it("Food & Drink のショートコードを正しく判定する", () => {
 		expect(classifyReaction("pizza")).toBe("food_and_drink");
-		expect(classifyReaction("beer_mug")).toBe("food_and_drink");
-		expect(classifyReaction("cooked_rice")).toBe("food_and_drink");
+		expect(classifyReaction("beer")).toBe("food_and_drink");
+		expect(classifyReaction("rice")).toBe("food_and_drink");
 		expect(classifyReaction("sushi")).toBe("food_and_drink");
 	});
 
 	it("Animals & Nature のショートコードを正しく判定する", () => {
-		expect(classifyReaction("dog_face")).toBe("animals_and_nature");
-		expect(classifyReaction("cat_face")).toBe("animals_and_nature");
+		expect(classifyReaction("dog")).toBe("animals_and_nature");
+		expect(classifyReaction("cat")).toBe("animals_and_nature");
 		expect(classifyReaction("cherry_blossom")).toBe("animals_and_nature");
 		expect(classifyReaction("evergreen_tree")).toBe("animals_and_nature");
 	});
 
 	it("Activities のショートコードを正しく判定する", () => {
-		expect(classifyReaction("soccer_ball")).toBe("activities");
+		expect(classifyReaction("soccer")).toBe("activities");
 		expect(classifyReaction("video_game")).toBe("activities");
 		expect(classifyReaction("fireworks")).toBe("activities");
 	});
@@ -46,8 +46,8 @@ describe("classifyReaction", () => {
 describe("shortcodeToEmoji", () => {
 	it("既知のショートコードをUnicode絵文字に変換する", () => {
 		expect(shortcodeToEmoji("pizza")).toBe("🍕");
-		expect(shortcodeToEmoji("dog_face")).toBe("🐶");
-		expect(shortcodeToEmoji("soccer_ball")).toBe("⚽");
+		expect(shortcodeToEmoji("dog")).toBe("🐶");
+		expect(shortcodeToEmoji("soccer")).toBe("⚽");
 	});
 
 	it("不明なショートコードはnullを返す", () => {
@@ -79,13 +79,13 @@ describe("getReactionDelta", () => {
 
 	describe("Animals & Nature", () => {
 		it("actionType が pet である", () => {
-			const result = getReactionDelta("animals_and_nature", "dog_face");
+			const result = getReactionDelta("animals_and_nature", "dog");
 			expect(result.actionType).toBe("pet");
 		});
 
 		it("hunger が -3 〜 -10 の範囲", () => {
 			for (let i = 0; i < 50; i++) {
-				const result = getReactionDelta("animals_and_nature", "dog_face");
+				const result = getReactionDelta("animals_and_nature", "dog");
 				expect(result.delta.hunger).toBeGreaterThanOrEqual(-10);
 				expect(result.delta.hunger).toBeLessThanOrEqual(-3);
 			}
@@ -93,7 +93,7 @@ describe("getReactionDelta", () => {
 
 		it("mood が +8 〜 +20 の範囲", () => {
 			for (let i = 0; i < 50; i++) {
-				const result = getReactionDelta("animals_and_nature", "dog_face");
+				const result = getReactionDelta("animals_and_nature", "dog");
 				expect(result.delta.mood).toBeGreaterThanOrEqual(8);
 				expect(result.delta.mood).toBeLessThanOrEqual(20);
 			}
@@ -102,13 +102,13 @@ describe("getReactionDelta", () => {
 
 	describe("Activities", () => {
 		it("actionType が play である", () => {
-			const result = getReactionDelta("activities", "soccer_ball");
+			const result = getReactionDelta("activities", "soccer");
 			expect(result.actionType).toBe("play");
 		});
 
 		it("hunger が -5 〜 -15 の範囲", () => {
 			for (let i = 0; i < 50; i++) {
-				const result = getReactionDelta("activities", "soccer_ball");
+				const result = getReactionDelta("activities", "soccer");
 				expect(result.delta.hunger).toBeGreaterThanOrEqual(-15);
 				expect(result.delta.hunger).toBeLessThanOrEqual(-5);
 			}
@@ -116,7 +116,7 @@ describe("getReactionDelta", () => {
 
 		it("energy が -2 〜 -5 の範囲", () => {
 			for (let i = 0; i < 50; i++) {
-				const result = getReactionDelta("activities", "soccer_ball");
+				const result = getReactionDelta("activities", "soccer");
 				expect(result.delta.energy).toBeGreaterThanOrEqual(-5);
 				expect(result.delta.energy).toBeLessThanOrEqual(-2);
 			}
@@ -124,7 +124,7 @@ describe("getReactionDelta", () => {
 
 		it("mood が +3 〜 +8 の範囲", () => {
 			for (let i = 0; i < 50; i++) {
-				const result = getReactionDelta("activities", "soccer_ball");
+				const result = getReactionDelta("activities", "soccer");
 				expect(result.delta.mood).toBeGreaterThanOrEqual(3);
 				expect(result.delta.mood).toBeLessThanOrEqual(8);
 			}

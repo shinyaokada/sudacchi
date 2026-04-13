@@ -9,6 +9,7 @@ import { createLog } from "../db/repository/log.js";
 import { getAliveSudacchi, updateSudacchi } from "../db/repository/sudacchi.js";
 import { classifyReaction, getReactionDelta, shortcodeToEmoji } from "../engine/reaction.js";
 import { applyStatusChange, formatStatusBar } from "../engine/status.js";
+import type { SudacchiState } from "../engine/types.js";
 import { executeDeathCheck } from "../scheduler/death-check.js";
 import { executeTick } from "../scheduler/tick.js";
 import { buildFeedContext, buildSystemPrompt } from "../ai/prompt.js";
@@ -104,7 +105,7 @@ app.event("reaction_added", async ({ event }) => {
 	const reactionResult = getReactionDelta(category, shortcode);
 
 	// ステータス変動を適用
-	let state = {
+	let state: SudacchiState = {
 		id: sudacchi.id, name: sudacchi.name, stage: sudacchi.stage,
 		hunger: sudacchi.hunger, mood: sudacchi.mood, energy: sudacchi.energy,
 		isSleeping: sudacchi.isSleeping, bornAt: sudacchi.bornAt, diedAt: sudacchi.diedAt,
