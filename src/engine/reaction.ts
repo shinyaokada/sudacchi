@@ -1,4 +1,4 @@
-import emojiData from "unicode-emoji-json";
+import emojiDatasource from "emoji-datasource";
 import type { StatusDelta } from "./types.js";
 import { detectFood, getFoodDelta } from "./food.js";
 
@@ -15,10 +15,21 @@ export interface ReactionResult {
 	delta: StatusDelta;
 }
 
-// slug（Slackショートコード相当）→ { emoji, group } の逆引きマップを構築
-const slugToEmoji = new Map<string, { emoji: string; group: string }>();
-for (const [emoji, info] of Object.entries(emojiData)) {
-	slugToEmoji.set(info.slug, { emoji, group: info.group });
+interface EmojiEntry {
+	short_name: string;
+	short_names: string[];
+	unified: string;
+	category: string;
+}
+
+// Slackショートコード → { emoji, category } のマップを構築
+const shortNameMap = new Map<string, { emoji: string; category: string }>();
+for (const entry of emojiDatasource as EmojiEntry[]) {
+	const codePoints = entry.unified.split("-").map((cp) => Number.parseInt(cp, 16));
+	const emoji = String.fromCodePoint(...codePoints);
+	for (const name of entry.short_names) {
+		shortNameMap.set(name, { emoji, category: entry.category });
+	}
 }
 
 const GROUP_TO_CATEGORY: Record<string, ReactionCategory> = {
@@ -35,14 +46,14 @@ export function randInt(min: number, max: number): number {
 
 /** リアクションのショートコードからカテゴリを判定する */
 export function classifyReaction(shortcode: string): ReactionCategory {
-	const entry = slugToEmoji.get(shortcode);
+	const entry = shortNameMap.get(shortcode);
 	if (!entry) return "other";
-	return GROUP_TO_CATEGORY[entry.group] ?? "other";
+	return GROUP_TO_CATEGORY[entry.category] ?? "other";
 }
 
 /** ショートコードからUnicode絵文字を取得する */
 export function shortcodeToEmoji(shortcode: string): string | null {
-	return slugToEmoji.get(shortcode)?.emoji ?? null;
+	return shortNameMap.get(shortcode)?.emoji ?? null;
 }
 
 /** カテゴリに応じたステータス変動値を算出する */
