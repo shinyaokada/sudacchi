@@ -7,6 +7,7 @@ import { handleMessage } from "./core/handler.js";
 import { executeTick } from "./scheduler/tick.js";
 import { executeDeathCheck } from "./scheduler/death-check.js";
 import { applyStatusChange, formatStatusBar } from "./engine/status.js";
+import type { SudacchiState } from "./engine/types.js";
 import { classifyReaction, getReactionDelta, shortcodeToEmoji } from "./engine/reaction.js";
 import { getOrCreateBond, updateBond } from "./db/repository/bond.js";
 import { createLog } from "./db/repository/log.js";
@@ -166,7 +167,7 @@ async function main() {
 			const category = classifyReaction(shortcode);
 			const reactionResult = getReactionDelta(category, shortcode);
 
-			let state = {
+			let state: SudacchiState = {
 				id: sudacchi.id, name: sudacchi.name, stage: sudacchi.stage,
 				hunger: sudacchi.hunger, mood: sudacchi.mood, energy: sudacchi.energy,
 				isSleeping: sudacchi.isSleeping, bornAt: sudacchi.bornAt, diedAt: sudacchi.diedAt,
