@@ -1,5 +1,8 @@
-import emojiData from "unicode-emoji-json";
+import { createRequire } from "node:module";
 import type { StatusDelta } from "./types.js";
+
+const require = createRequire(import.meta.url);
+const emojiData = require("unicode-emoji-json") as Record<string, { name: string; slug: string; group: string; emoji_version: string; unicode_version: string; skin_tone_support: boolean }>;
 import { detectFood, getFoodDelta } from "./food.js";
 
 export type ReactionCategory =
